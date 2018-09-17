@@ -1,0 +1,220 @@
+c                                                
+
+
+通信技术：TCP 网络通信
+1.	
+	登入／注册 ：****************一级界面*********************
+客户端：
+    发送：“L usrname password”
+    接收：“ok usrname password” ------->进入二级大厅界面
+   
+    接收：“no password is incorrect” 密码错误    -----> 重新输入
+
+服务端：
+    接收：“L usrname password” --->解析，查表。
+        如果 用户存在,验证密码。
+        如果 用户不存在，自动注册，
+    反馈：验证通过：“ok usrname password”
+         验证不通过：“no : password is incorrect”
+
+
+2.                      
+客户端：    大厅：****************二级界面************************
+        
+客户端：
+
+    接收：“rooms: num1,num2,num3,num4 ” -->先接收间状态信息 num1为first room 人数 num2为second room 人数
+
+==================================聊天服务=======================================
+
+    接收:“username msg” -------> 接收聊天信息
+    发送：“message”	--------> 发送的聊天信息
+
+==================================进入游戏请求=====================================
+
+
+    发送：“H first room player“ / “H second room player” / “H third room player” / “H fourth room player” -----> 请求进入哪个房间号
+
+    接收：“ok red” 
+    接收：“ok black” 		------->身份确认，进入三级大厅界面 
+    接收：“ok visitor” 
+				 ------->进入三级大厅界面  
+    接收：“no room is full” 
+				 ------->拒绝进入三级大厅界面  
+
+服务端：
+
+    反馈：“rooms: num1,num2,num3,num4 ” -->先发送间状态信息
+
+==================================聊天服务=======================================
+   
+    反馈：“username msg” ---> 群发聊天信息
+    接收：“message”	----> 接收聊天信息
+
+==================================进入游戏请求=====================================
+    接收：“H first room player” / “H second room player” / “H third room player” / “H fourth room player” 。
+       
+    反馈：
+        客户端是红方：“ok red” 
+        客户端是黑方：“ok balck” 
+        客户端是游客：“ok visitor”
+        房间已满：“no : room is full” 
+
+4.
+客户端：    
+
+    双人对弈：**********三级界面**********************	
+
+==================================聊天服务=======================================
+
+    接收:“username msg” -------> 接收聊天信息
+    发送：“message”	--------> 发送的聊天信息
+
+==================================游戏对战=======================================	
+	先连接服务器，等待服务器发来的消信
+	data = sockfd.recv().decode()
+	
+	data:"successfull entry first room"	
+	
+	data : "first red" / "send back"	
+	
+        1.
+        客户端是红方  	选棋  发送：“s chessred x y chessname” -------> x , y 是原坐标值
+        	    	点空   发送：“s chessred x y 0”	
+	             	下棋  发送：“m chessred x y dx dy” ------------>  x,y 棋子原坐标，dx,dy是棋子成功的落子处坐标
+
+	 客户端是黑色	选棋  发送：“s chessblack x y chessname” -------> x , y 是原坐标值
+        	     	点空   发送：“s chessblack x y 0”	
+	             	下棋  发送：“m chessblack x y dx dy” ------------>  x,y 棋子原坐标，dx,dy是棋子成功的落子处坐标
+       
+	3.
+	
+	接收服器发来的对方下棋的消息
+	sockfd.recv("s chessred x y chessname”)    -------> x , y 是坐标值
+	sockfd.recv("m chessred x y dx dy”)
+	\
+	sockfd.recv("s chessblack x y chessname”)
+	sockfd.recv("m chessblack x y dx dy”)
+	
+	更新同步棋局
+
+	4.
+	发送输赢结果：
+	data = sockfd.recv().decode()
+	data：“red win”
+	data: "black lose"	
+
+服务端：
+==================================聊天服务=======================================
+   
+    反馈：“username msg” ---> 群发聊天信息
+    接收：“message”	----> 接收聊天信息
+
+==================================游戏对战=======================================
+	sockfd = socket()
+	sockfd.bind((addr,port))
+	sockfd.listen(1024)
+	
+	conn,addr = socfd.accept()
+	....
+	1.
+    未配对成功：
+        服务器给客户端发“#”表示游戏还未开始，客户端回发“#”表示等待开局中.....
+
+	配对成功
+	通知客户端可以开始游戏
+        红方下棋
+    	sockfd.send("chessred".decode())
+        黑方的下棋
+        sockfd.send("chessred".decode())
+	
+	2.
+	先接收客户端红方选棋消息：	
+	data = sockfd.recv().decode()
+	data:红方  选棋  发送：“s chessred x y chessname”	
+	再发送客户端红方下棋消息给黑方
+	sockfd.send("s chessred x y chessname”)
+	
+	再接收客户端红方下棋消息：
+	data = sockfd.recv().decode()
+	data: 红方  下棋  发送sockfd.send("m chessred x y dx dy”)		
+	再发送客户端红方下棋消息给黑方
+	sockfd.send("m chessred x y dx dy”)
+	
+
+	
+	注意：服务端：需对进入房间的人数进行统计，管理。
+
+
+以上为基本要实现的功能	
+
+×××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××××
+
+
+下后期再做：
+
+        2.
+        客户端从布署在服务器端的mysql获得棋局数据
+        具体：
+            客户端起动，连接mysql,初始化棋局。
+            红方下完棋，更新数据库，客户端同步
+            黑方下完棋，更新数据库，客户端同步
+        
+        
+        3.
+        红方下棋，黑方后下棋
+        同时只能有一方在下棋，一方下完别一方才能下
+
+        棋子的走法算法：
+
+            向量法：棋子当前位置为：chesslocation---->(x,y)
+                   目标位置：targetlocation---->(dx,dy)
+
+                   vector = targetlocation - chesslocation 
+
+                   vector[0] 为向x轴平移多少
+                   vector[1] 为向y轴平移多少
+
+        3.
+        棋局胜负判决
+        一方将另一方主帅吃掉算赢
+        一方与另一方主帅碰面算输
+        一方出现同时从两个垂直方向将君别一方算赢
+        一方将另一方主帅困在一脚，另一方无棋可下算输
+        4.
+        退出方回到大厅。留下方等待棋手加入
+ 
+
+服务端:
+
+    1.
+        pymsyl  
+        1.  
+        先用一个小程序生成 chessdb数据库中board_pos表的数据
+        ---------------------------------
+        | id  |  x   |   y  | colorname |
+        ---------------------------------
+        colorname 为 NULL说明无棋子
+                如何使用数据库：
+        同步客户端的棋局
+            记录用户的胜负历史
+        2.
+        注册登入验证：user:name password:code
+        存储用户信息:胜几，负几
+    
+    2.
+        TCP/UDP通信
+            向同一组里的所人转发群聊消息(大厅、对弈)
+            发送管理员消息  
+
+
+
+
+
+  
+
+
+
+             
+   
+        
